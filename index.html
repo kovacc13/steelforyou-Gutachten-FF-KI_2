@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KI-Gutachten-Assistent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Importiere Font Awesome für das Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Angepasstes Farbschema basierend auf steelforyou.at */
+        :root {
+            --color-primary: #003366; /* Steel for you Dunkelblau */
+            --color-secondary: #cc0000; /* Professionelles Rot/Akzent */
+            --color-accent-light: #fff5f5; /* Hellroter Akzent-Hintergrund */
+        }
+        .bg-primary { background-color: var(--color-primary); }
+        .text-primary { color: var(--color-primary); }
+        .bg-secondary { background-color: var(--color-secondary); }
+        .hover-bg-secondary:hover { background-color: #a00000; } /* Dunkleres Rot beim Hover */
+        .border-secondary { border-color: var(--color-secondary); }
+        .bg-accent-light { background-color: var(--color-accent-light); }
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; } /* Sehr helles Grau */
+        
+        /* Tab Navigation Styling */
+        .tab-button { transition: all 0.2s ease-in-out; border-radius: 0.5rem 0.5rem 0 0; }
+        .tab-active { 
+            background-color: white; 
+            color: var(--color-primary); 
+            border-bottom: 4px solid var(--color-secondary); 
+            font-weight: 700; 
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .tab-inactive { 
+            background-color: var(--color-primary); 
+            color: white; 
+            opacity: 0.9; 
+        }
+        
+        /* Simulation der Foto-Beschriftung */
+        .photo-overlay-container {
+            position: relative;
+            width: 100%;
+            padding-top: 75%; 
+            background: #e5e7eb url('https://placehold.co/600x450/4a5568/ffffff?text=FOTO+8+NAHAUFNAHME+RISS') center center / cover no-repeat;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .photo-overlay-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* Styling für Collapsible Details */
+        details {
+            border: 1px solid #d1d5db;
+            border-radius: 0.75rem; 
+            padding: 1.25rem;
+            background-color: white;
+            /* Stärkere Schattierung für den seriösen Look */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            transition: all 0.2s;
+        }
+        details[open] {
+            border-color: var(--color-primary);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+        summary {
+            cursor: pointer;
+            font-weight: 700;
+            color: var(--color-primary);
+            outline: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        summary::after {
+            content: 'Öffnen 🔽';
+            font-size: 0.9rem;
+            color: var(--color-secondary);
+            margin-left: 1rem;
+        }
+        details[open] summary::after {
+            content: 'Schließen 🔼';
+            color: var(--color-secondary);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header & Tab Navigation -->
+    <header class="bg-primary text-white shadow-2xl sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col sm:flex-row justify-between items-center">
+            <!-- LOGO / VOLLSTÄNDIGE FIRMENBEZEICHNUNG -->
+            <div class="flex items-center space-x-4">
+                <!-- Icon als Ersatz für das Logo (immer sichtbar) -->
+                <i class="fa-solid fa-helmet-safety text-white text-4xl p-2 rounded-lg border-2 border-secondary bg-primary"></i>
+                
+                <h1 class="text-3xl font-extrabold leading-tight">
+                    Steel for you, DI HTL Ing. Fritz Felber Sachverständiger 
+                    <span class="text-secondary block sm:inline-block text-2xl">| KI Assistent</span>
+                </h1>
+            </div>
+            <!-- ZUSÄTZLICHE INFORMATIONEN RECHTS IM HEADER -->
+            <p class="text-base font-semibold mt-3 sm:mt-0 text-right">
+                Workflow für gerichtsfeste Gutachten<br>
+                <span class="text-sm font-normal opacity-80">Projektdesign: Dr. Christian Kovac</span>
+            </p>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="max-w-7xl mx-auto flex overflow-x-auto px-4 sm:px-6 lg:px-8 pt-2">
+            <button id="tab1" class="tab-button tab-active flex-1 text-center py-3 px-2 min-w-[200px]" onclick="showTab(1)">
+                1. Überblick: Problem & Lösung
+            </button>
+            <button id="tab2" class="tab-button tab-inactive flex-1 text-center py-3 px-2 min-w-[200px]" onclick="showTab(2)">
+                2. Foto-Analyse
+            </button>
+            <button id="tab3" class="tab-button tab-inactive flex-1 text-center py-3 px-2 min-w-[200px]" onclick="showTab(3)">
+                3. Automatische Beschriftung
+            </button>
+            <button id="tab4" class="tab-button tab-inactive flex-1 text-center py-3 px-2 min-w-[200px]" onclick="showTab(4)">
+                4. Gerichtsfeste Doku. & ROI
+            </button>
+            <button id="tab5" class="tab-button tab-inactive flex-1 text-center py-3 px-2 min-w-[200px]" onclick="showTab(5)">
+                5. Strukturprojektplan & Förderung
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- TAB 1: ÜBERBLICK: PROBLEM & LÖSUNG (Globaler Überblick) -->
+        <div id="content1" class="tab-content space-y-8">
+            <h2 class="text-3xl font-extrabold text-gray-900 border-b pb-3 border-secondary/50">🎯 Überblick: Problem & Lösung</h2>
+
+            <!-- NEUER ABSCHNITT: AUSGANGSSITUATION -->
+            <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-inner">
+                <h3 class="text-xl font-bold text-primary mb-2">Ausgangssituation</h3>
+                <p class="text-sm text-gray-700">
+                    Besprechung der Ideen von **DI HTL Ing. Fritz Felber** und **Dr. Christian Kovac** zum Einsatz von KI in den Steel for you Unternehmensbereichen. Es gibt verschiedene potenzielle Use Cases, wobei der hier gezeigte **UC1** als erster für die konkrete Umsetzung besprochen wird.
+                </p>
+            </div>
+            <!-- ENDE AUSGANGSSITUATION -->
+
+
+            <!-- Problem & Lösung Summary -->
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="md:col-span-2">
+                        <h3 class="text-2xl font-bold text-primary mb-4 border-b pb-2">Das Problem: Hoher Zeit- und Risikoaufwand</h3>
+                        <!-- Geordnete Liste (ol) für die 5 Problem-Punkte (Nummerierung) -->
+                        <ol class="list-decimal list-inside ml-4 text-base mt-2 space-y-2 text-gray-700">
+                            <li>⏱️ Durchschnittlich **10-15 Stunden** pro Gutachten. **2-3 Stunden** allein für Foto-Dokumentation.</li>
+                            <li>⚖️ **95% Gerichtskontext** – Erfordert höchste Objektivität und Nachvollziehbarkeit.</li>
+                            <li>🔍 Manuelle Schadensanalyse und Normenrecherche (EN 1090, ISO 3834) sind zeitintensiv.</li>
+                            <li>❌ Hohe Haftungsrisiken durch fehlerhafte Normen- oder Kausalitätsketten.</li>
+                            <li>✅ Manuelle Qualitätssicherung für gerichtsfeste Dokumentation ist fehleranfällig.</li>
+                        </ol>
+                        <div class="mt-6 p-4 bg-accent-light rounded-xl border-l-4 border-secondary shadow-inner">
+                            <p class="font-bold text-secondary text-xl">💡 DIE LÖSUNG: KI-GESTÜTZTER ASSISTENT</p>
+                            <p class="text-sm mt-1 text-gray-800">Erstellt gerichtsfeste Gutachten in **5 statt 12 Stunden** (58% schneller), indem es Bildanalyse, Normenprüfung und Dokumentationsstruktur automatisiert.</p>
+                        </div>
+                    </div>
+                    <div class="md:col-span-1 bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-inner">
+                        <h4 class="font-bold text-xl mb-3 text-primary">SCHRITT 1: Projekt-Setup (5 Min.)</h4>
+                        <p class="text-sm italic text-gray-600">Simulierter Start-Dialog:</p>
+                        <p class="text-xs mt-2 text-gray-800 font-semibold">**SV Felber:** "Neues Gutachten: Kranbahnträger, Risse in Schweißnaht, Wer haftet? Aktenzeichen 7 O 123/24."</p>
+                        <p class="text-xs mt-2 font-bold text-green-700">**Claude:** "Verstanden. Auftragsdarstellung, Beweisfragen und Gliederung für gerichtsfeste Dokumentation werden vorbereitet."</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Core Functions Overview -->
+            <h3 class="text-2xl font-bold text-primary mt-6 mb-4">DREI KI-KERNFUNKTIONEN</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="p-5 bg-primary text-white rounded-xl shadow-lg flex flex-col items-center transform hover:scale-[1.02] transition duration-300">
+                    <p class="text-4xl font-extrabold text-secondary">1.</p>
+                    <p class="text-center font-bold mt-1 text-xl">FOTO-ANALYSE</p>
+                    <p class="text-sm text-center opacity-80 mt-2">Wie ein Radiologe: erkennt Risse, Korrosion, Nahtfehler. Spart **84% Zeit** in Phase 2.</p>
+                </div>
+                <div class="p-5 bg-primary text-white rounded-xl shadow-lg flex flex-col items-center transform hover:scale-[1.02] transition duration-300">
+                    <p class="text-4xl font-extrabold text-secondary">2.</p>
+                    <p class="text-center font-bold mt-1 text-xl">AUTOM. BESCHRIFTUNG</p>
+                    <p class="text-sm text-center opacity-80 mt-2">Professionelle Overlays, Maße, Legenden und Stapelverarbeitung. Spart **bis zu 99% Zeit** in Phase 3.</p>
+                </div>
+                <div class="p-5 bg-primary text-white rounded-xl shadow-lg flex flex-col items-center transform hover:scale-[1.02] transition duration-300">
+                    <p class="text-4xl font-extrabold text-secondary">3.</p>
+                    <p class="text-center font-bold mt-1 text-xl">GERICHTSFESTE DOKU.</p>
+                    <p class="text-sm text-center opacity-80 mt-2">Objektive Sprache, Normenprüfung (EN/ISO), Kausalität. **Sichert höchste Qualität** und vermeidet Ergänzungsgutachten.</p>
+                </div>
+            </div>
+            
+            <div class="text-right pt-4">
+                <button class="bg-secondary text-white py-3 px-8 rounded-xl shadow-lg font-bold text-lg hover-bg-secondary transition" onclick="showTab(2)">
+                    Weiter zu 2. Foto-Analyse (Detail)
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 2: FOTO-ANALYSE -->
+        <div id="content2" class="tab-content space-y-6 hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 border-b pb-3 border-secondary/50">🔬 2. Foto-Analyse (Radiologen-Augen)</h2>
+            <p class="text-lg text-gray-700">**KI-gestützte Bildanalyse** - präzise wie medizinische Diagnostik. Claude analysiert 45 Fotos in 3 Minuten, erkennt Schadens-Morphologie und leitet die gerichtliche Relevanz ab.</p>
+
+            <details class="mt-4" open>
+                <summary class="text-xl">Detaillierte Vorgehensweise & Analyse FOTO 8</summary>
+                
+                <div class="pt-6 space-y-8">
+                    <!-- DETAIL ANALYSE MOCK: FOTO 8 -->
+                    <h3 class="text-xl font-semibold mb-4 text-primary">KI-Analyse (45 Fotos in 3 Min.) - Detail: FOTO 8 ("IMG_2854.jpg")</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Bild-Simulation FOTO 8 -->
+                        <div class="lg:col-span-1 photo-overlay-container">
+                            <svg class="photo-overlay-svg" viewBox="0 0 600 450" preserveAspectRatio="none">
+                                <!-- Rissausgang/Kerbe (Gelb) -->
+                                <circle cx="282" cy="250" r="10" fill="yellow" stroke="red" stroke-width="3" opacity="0.8"/>
+                                <text x="350" y="275" font-size="14" fill="yellow" font-weight="bold" style="filter: drop-shadow(0 0 1px black);">Einbrandkerbe/Rissursprung</text>
+                                
+                                <!-- Schwingstreifen (Weiß) -->
+                                <path d="M 300 150 L 300 220" stroke="white" stroke-width="4" stroke-dasharray="3,3" />
+                                <text x="310" y="160" font-size="14" fill="white" font-weight="bold">Schwingstreifen</text>
+                                
+                                <!-- Riss-Linie (Rot) -->
+                                <path d="M 282 240 L 285 100" stroke="red" stroke-width="4" stroke-linecap="round" />
+                                <text x="300" y="100" font-size="16" fill="red" font-weight="bold" style="filter: drop-shadow(0 0 1px black);">Oberflächenriss</text>
+                            </svg>
+                        </div>
+
+                        <!-- Analyse-Daten & Befund -->
+                        <div class="lg:col-span-2 space-y-4">
+                            <div class="bg-accent-light p-4 rounded-xl border-l-4 border-secondary shadow-inner">
+                                <h4 class="font-bold text-secondary flex items-center mb-2 text-lg">
+                                    🔍 SCHADENS-MORPHOLOGIE & BEWERTUNG
+                                </h4>
+                                <p class="text-sm"><span class="font-medium text-primary">Schadensbild:</span> Klassischer **Ermüdungsriss** (Schwingstreifen erkennbar).</p>
+                                <p class="text-sm"><span class="font-medium text-primary">Rissausgang:</span> Eindeutig am Schweißnahtende (**Kerbe** am Nahtübergang).</p>
+                                <p class="text-sm"><span class="font-medium text-primary">Norm-Vergleich:</span> Rissanzeige **Kategorie D** (unzulässig für tragende Bauteile).</p>
+                                <p class="text-sm"><span class="font-medium text-primary">Relevanz:</span> Foto beweist: **Konstruktiver Mangel** wahrscheinlicher als Ausführungsmangel.</p>
+                            </div>
+                            
+                            <!-- BEFUND-TEXT GENERIERUNG -->
+                            <div class="mt-4">
+                                <h4 class="text-lg font-bold mb-2 text-primary">Generierter Befund-Text (Auszug FOTO 8):</h4>
+                                <textarea readonly class="w-full p-4 h-36 border border-gray-300 rounded-xl bg-gray-50 text-xs shadow-inner">
+"Nahaufnahme des Risses aus FOTO 1. Detailansicht Schweißnahtende mit Rissausgang. Die Schweißnaht-Analyse zeigt eine konkave Nahtoberflächenform und eine deutliche Kerbe am Nahtübergang. Schwingstreifen sind erkennbar, was auf einen Ermüdungsriss hindeutet. Rissausgang ist eindeutig die Kerbstelle, was auf eine unzureichende konstruktive Durchbildung hinweist."
+                                </textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Zeitersparnis Sektion -->
+                    <div class="bg-gray-100 p-5 rounded-xl border border-gray-300 shadow-md">
+                        <p class="font-bold text-primary text-xl">Zeitersparnis Foto-Analyse & Befund-Erstellung:</p>
+                        <p class="text-sm mt-1 text-gray-700">VORHER (Manuell, Phase 2 & 3): 3,5 Stunden | JETZT (mit KI): 30 Minuten (+ 3 Min. Analyse)</p>
+                        <p class="text-2xl font-extrabold text-secondary mt-2">Ersparnis: 84% ⚡</p>
+                    </div>
+                </div>
+            </details>
+
+            <div class="text-right pt-4">
+                <button class="bg-secondary text-white py-3 px-8 rounded-xl shadow-lg font-bold text-lg hover-bg-secondary transition" onclick="showTab(3)">
+                    Weiter zu 3. Automatische Beschriftung (Detail)
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 3: AUTOMATISCHE BESCHRIFTUNG -->
+        <div id="content3" class="tab-content space-y-6 hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 border-b pb-3 border-secondary/50">📝 3. Automatische Foto-Beschriftung</h2>
+            <p class="text-lg text-gray-700">**Professionelle Beschriftung** wie in Fachpublikationen. Setzt Pfeile, Maße und Metadaten. **Spart bis zu 99% der Zeit** für die manuelle Bildbearbeitung.</p>
+
+            <details class="mt-4" open>
+                <summary class="text-xl">Detaillierter Beschriftungs-Workflow & Batch-Verarbeitung</summary>
+                
+                <div class="pt-6 space-y-8">
+                    <h3 class="text-xl font-semibold mb-4 text-primary">Schritt 3: Generierung der gerichtsfesten Beschriftung (FOTO 8)</h3>
+                    
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <!-- Simuliertes beschriftetes Bild (FOTO 8) -->
+                        <div class="md:w-1/2">
+                            <h4 class="font-bold text-lg mb-2 text-primary">Beschriftetes FOTO 8 (Gerichtsgutachten-Stil)</h4>
+                            <div class="photo-overlay-container">
+                                <svg class="photo-overlay-svg" viewBox="0 0 600 450" preserveAspectRatio="none">
+                                    <!-- METADATEN BLOCK (UNTER LINKS) -->
+                                    <rect x="10" y="360" width="220" height="80" fill="rgba(255,255,255,0.95)" rx="8"/>
+                                    <text x="20" y="380" font-size="12" fill="#333" font-weight="bold">📅 15.11.2025 | 🕐 14:27 Uhr</text>
+                                    <text x="20" y="395" font-size="12" fill="#333">📸 SV Felber | Stützenachse 5-6</text>
+                                    <text x="20" y="410" font-size="12" fill="#333">⚠️ Tragfähigkeit beeinträchtigt</text>
+                                    <text x="20" y="425" font-size="12" fill="#333">Referenz: 20mm Maßstab</text>
+
+                                    <!-- HAUPT-SCHADENSMARKIERUNG (Rot) -->
+                                    <circle cx="282" cy="250" r="15" fill="none" stroke="red" stroke-width="4"/>
+                                    <text x="350" y="240" font-size="14" fill="red" font-weight="bold" style="filter: drop-shadow(0 0 1px black);">Rissausgang</text>
+                                    
+                                    <!-- DETAIL-MARKIERUNG (Gelb/Einbrandkerbe) -->
+                                    <line x1="282" y1="260" x2="300" y2="300" stroke="yellow" stroke-width="3" marker-end="url(#arrow-yellow)"/>
+                                    <text x="305" y="300" font-size="14" fill="yellow" font-weight="bold" style="filter: drop-shadow(0 0 1px black);">Einbrandkerbe</text>
+
+                                    <!-- Schwingstreifen (Weiß) -->
+                                    <line x1="300" y1="150" x2="450" y2="150" stroke="white" stroke-width="2" stroke-dasharray="8,4"/>
+                                    <text x="460" y="155" font-size="14" fill="white" font-weight="bold">Schwingstreifen</text>
+                                    
+                                    <defs>
+                                        <marker id="arrow-yellow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
+                                            <path d="M 0 0 L 10 5 L 0 10 z" fill="yellow" />
+                                        </marker>
+                                    </defs>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Bildlegenden-Generator & Batch -->
+                        <div class="md:w-1/2 space-y-4">
+                            <h4 class="font-bold text-lg mb-2 text-primary">Automatisch generierte Bildlegende (Abb. 8)</h4>
+                            <textarea id="legende-output" readonly class="w-full p-4 h-48 border border-gray-300 rounded-xl bg-gray-50 text-xs shadow-inner">
+"Abb. 8: Nahaufnahme Rissausgang am Schweißnahtende. 
+Deutlich erkennbar: Einbrandkerbe (gelb) als Rissursprung, 
+oxidierte Rissoberfläche (grün, nicht sichtbar in dieser Sim.) 
+und typische Ermüdungs-Schwingstreifen (weiß). Kehlnaht 
+mit Nahtdicke a≈8mm (blau, nicht sichtbar in dieser Sim.).
+
+(Foto: SV Felber, 15.11.2025, 14:27 Uhr)"
+                            </textarea>
+                            
+                            <div class="flex justify-between items-center pt-4 border-t">
+                                <button class="bg-primary text-white py-3 px-6 rounded-xl shadow-lg hover:bg-blue-900 transition" onclick="simulateBatch(45, 600)">
+                                    Stapelverarbeitung (45 Fotos) starten
+                                </button>
+                                <span id="batch-time" class="text-sm font-semibold text-gray-700">Ziel: 10 Minuten ⚡</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <div class="text-right pt-4">
+                <button class="bg-secondary text-white py-3 px-8 rounded-xl shadow-lg font-bold text-lg hover-bg-secondary transition" onclick="showTab(4)">
+                    Weiter zu 4. Gerichtsfeste Doku. & ROI (Detail)
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 4: GERICHTSFESTE DOKUMENTATION & ROI -->
+        <div id="content4" class="tab-content space-y-6 hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 border-b pb-3 border-secondary/50">⚖️ 4. Gerichtsfeste Doku. & ROI</h2>
+            <p class="text-lg text-gray-700">Sicherstellung von **Objektivität und Nachvollziehbarkeit** (95% Gerichtskontext). KI prüft Sprache, Normenkonformität und Kausalitätsketten.</p>
+
+            <details class="mt-4" open>
+                <summary class="text-xl">Detaillierte Prüfung, Haftungsanalyse & Gliederung</summary>
+
+                <div class="pt-6 space-y-8">
+                    <h3 class="text-xl font-semibold text-primary mb-4">Gerichtsfeste Sprache & Kausalitätsanalyse</h3>
+
+                    <!-- Objektivität Beispiel -->
+                    <div class="mb-4">
+                        <h4 class="font-bold text-lg text-secondary">BEISPIEL: Objektive Formulierung (KI-generiert)</h4>
+                        <div class="mt-2 p-4 border rounded-xl bg-gray-50 text-sm">
+                            <p class="font-bold text-green-700">✅ RICHTIG (Objektiv, neutral, fachlich):</p>
+                            <p class="mt-1">"Die Schweißnaht weist folgende Abweichungen auf: Einbrandkerbe am Nahtende (Foto 8), Konkave Nahtform (gemessen: Überhöhung -1,2mm). Gemäß EN 1090-2:2018 ist für diese Anwendung Bewertungsgruppe B gefordert. Feststellung: Die Schweißnaht erfüllt die normativen Anforderungen NICHT."</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Haftungsfrage Beispiel -->
+                    <div class="mb-6">
+                        <h4 class="font-bold text-lg text-secondary">BEISPIEL: Kausalitätskette & Haftungsfrage</h4>
+                        <div class="mt-2 p-4 border rounded-xl bg-accent-light text-sm space-y-2 border-l-4 border-secondary/50 shadow-inner">
+                            <p class="font-bold text-red-700">Kausalität (technische Einschätzung):</p>
+                            <ul class="list-disc list-inside ml-4">
+                                <li>**PLANUNGSFEHLER** (hauptursächlich, ca. 70%): Falsche Kerbfallklasse (Kerbfall 100 statt 80) angenommen.</li>
+                                <li>**AUSFÜHRUNGSMANGEL** (mitursächlich, ca. 30%): Einbrandkerbe verschärft Kerbwirkung.</li>
+                            </ul>
+                            <p class="text-xs font-bold text-gray-700 mt-2">Hinweis: Die rechtliche Bewertung der Haftungsquoten obliegt dem Gericht.</p>
+                        </div>
+                    </div>
+
+                    <!-- Qualitätscheck -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                        <div class="space-y-4">
+                            <h4 class="font-bold text-lg text-primary">📋 KI-Qualitäts-Checkliste (SCORE: 98/100)</h4>
+                            <ul id="checklist" class="space-y-2 text-sm p-4 rounded-xl border bg-gray-50 shadow-inner">
+                                <li class="flex items-start text-green-600"><span class="font-bold mr-2">✓</span> Alle Beweisfragen beantwortet</li>
+                                <li class="flex items-start text-green-600"><span class="font-bold mr-2">✓</span> Strikte Trennung Befund/Bewertung/Stellungnahme</li>
+                                <li class="flex items-start text-red-600" data-correction="1"><span class="font-bold mr-2">⚠️</span> Nachvollziehbarkeit: Foto-Referenz für "Einbrandkerbe" in Zeile 127 fehlt.</li>
+                                <li class="flex items-start text-green-600"><span class="font-bold mr-2">✓</span> Normenkonformität: Aktuelle Versionen zitiert (EN 1090-2, EN 1993-1-9).</li>
+                                <li class="flex items-start text-red-600" data-correction="2"><span class="font-bold mr-2">⚠️</span> Vollständigkeit: Auch "negative Befunde" (Träger ohne Schaden) dokumentieren.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Korrektur Button -->
+                        <div class="space-y-4">
+                            <h4 class="font-bold text-lg text-secondary">🚨 Empfohlene Korrekturen</h4>
+                            <div class="pt-4 border-t">
+                                <button class="w-full bg-secondary text-white py-3 px-6 rounded-xl shadow-lg hover-bg-secondary transition" onclick="simulateCorrection()">
+                                    🚀 Korrekturen automatisch vornehmen (15 Min.)
+                                </button>
+                                <div id="correction-status" class="text-center mt-3 text-lg font-semibold text-gray-700 hidden">
+                                    <span class="text-green-600">✅ Korrekturen abgeschlossen!</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+            
+            <!-- ROI Section - Final Summary -->
+            <div class="mt-8">
+                <h3 class="text-2xl font-extrabold text-gray-900 border-b pb-3 border-secondary/50">📊 ROI & Gesamteffizienz (Bandbreiten-Analyse)</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Zeitersparnis Box - RANGE -->
+                    <div class="bg-gray-100 p-6 rounded-xl shadow-xl border border-gray-300">
+                        <h4 class="text-xl font-bold text-primary mb-4">Gesamte Zeiteinsparung pro Gutachten (Ausgangspunkt: 12 h)</h4>
+                        
+                        <!-- Konservativ -->
+                        <div class="mt-4 p-3 bg-white rounded-xl shadow-inner border border-gray-200">
+                            <p class="font-bold text-gray-700">1. Konservative Schätzung (Startphase)</p>
+                            <div class="flex justify-between font-mono text-xl mt-1">
+                                <span class="font-semibold">Zielzeit:</span>
+                                <span class="font-extrabold text-red-600">8 h</span>
+                            </div>
+                            <div class="text-center mt-2">
+                                <p class="text-3xl font-extrabold text-red-600">33% Ersparnis</p>
+                            </div>
+                        </div>
+
+                        <!-- Optimistisch -->
+                        <div class="mt-4 p-3 bg-white rounded-xl shadow-inner border-2 border-secondary/70">
+                            <p class="font-bold text-gray-700">2. Optimistische Schätzung (Ziel-Workflow)</p>
+                            <div class="flex justify-between font-mono text-xl mt-1">
+                                <span class="font-semibold">Zielzeit:</span>
+                                <span class="font-extrabold text-secondary">4 h</span>
+                            </div>
+                            <div class="text-center mt-2">
+                                <p class="text-3xl font-extrabold text-secondary">66% Ersparnis 🚀</p>
+                            </div>
+                        </div>
+                        
+                        <div class="h-1 bg-gray-300 my-4"></div>
+                        <div class="text-center">
+                            <p class="text-lg font-bold text-primary">Bandbreite der Effizienzsteigerung:</p>
+                            <p class="text-2xl font-extrabold text-primary">33% bis 66%</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Gliederung / Final Deliverable -->
+                    <div class="bg-primary text-white p-6 rounded-xl shadow-xl">
+                        <h4 class="text-xl font-bold text-secondary">SCHRITT 5: Gerichtsfeste Gliederung</h4>
+                        <p class="text-sm mt-3 opacity-90">Die KI liefert die finale, gerichtsoptimierte Struktur automatisch mit aus:</p>
+                        <div class="mt-4">
+                            <details class="text-sm bg-blue-900/50 p-3 rounded-xl cursor-pointer">
+                                <summary class="font-bold text-white">Vollständige Gliederung anzeigen</summary>
+                                <ul class="list-disc list-inside ml-4 mt-2 text-xs text-gray-200 space-y-1">
+                                    <li>TITELSEITE (Gericht, Az., Parteien)</li>
+                                    <li>1. AUFTRAGSERTEILUNG UND VERFAHRENSGANG</li>
+                                    <li>2. SACHVERHALT UND VORGESCHICHTE</li>
+                                    <li>...</li>
+                                    <li>8. BEANTWORTUNG DER BEWEISFRAGEN</li>
+                                    <li>9. ZUSAMMENFASSENDE STELLUNGNAHME</li>
+                                </ul>
+                            </details>
+                        </div>
+                        <p class="text-xs mt-4 italic opacity-80">Gespart: Gliederung, Formalia & 95% des Schreib- und Rechercheaufwands.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-8">
+                <p class="text-xl font-semibold text-primary mb-4">KI als Ihr intelligenter Co-Autor mit "Radiologen-Augen"</p>
+                <div class="p-4 bg-yellow-100 rounded-xl text-sm font-bold mb-4 border border-yellow-300 shadow-md">
+                    Prognostizierte Bandbreite der Effizienzsteigerung: <span class="text-red-600">33% (konservativ)</span> bis <span class="text-secondary">66% (optimistisch)</span> pro Gutachten.
+                </div>
+                <button class="bg-secondary text-white py-3 px-8 rounded-xl shadow-lg text-lg font-bold hover-bg-secondary transition" onclick="showTab(5)">
+                    Weiter zu 5. Projektplan & Förderung
+                </button>
+            </div>
+        </div>
+        
+        <!-- TAB 5: STRUKTURPROJEKTPLAN & FÖRDERUNG -->
+        <div id="content5" class="tab-content space-y-6 hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 border-b pb-3 border-secondary/50">5. Strukturprojektplan & Förderung</h2>
+            <p class="text-lg text-gray-700">Die Roadmap für die erfolgreiche Implementierung des KI-Assistenten, inklusive wichtiger **Fördermöglichkeiten** in Österreich (Steiermark).</p>
+
+            <details class="mt-4" open>
+                <summary class="text-xl">Grobe Strukturplanung: 5 Phasen bis zum Produktiveinsatz</summary>
+                <div class="pt-6 space-y-4">
+                    <!-- Projektplan-Tabelle -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border border-gray-200 rounded-xl shadow-md">
+                            <thead>
+                                <tr class="bg-primary text-white text-left">
+                                    <th class="py-3 px-4 font-semibold">Phase</th>
+                                    <th class="py-3 px-4 font-semibold">Titel</th>
+                                    <th class="py-3 px-4 font-semibold">Dauer</th>
+                                    <th class="py-3 px-4 font-semibold">Ziel</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-gray-700">
+                                <tr class="border-b">
+                                    <td class="py-3 px-4 font-bold text-secondary">I</td>
+                                    <td class="py-3 px-4 font-bold">Setup & Foundation</td>
+                                    <td class="py-3 px-4">1 Woche</td>
+                                    <td class="py-3 px-4">Installation der KI-Tools, Anonymisierung & Digitalisierung der 10 Top-Gutachten (Lernbasis).</td>
+                                </tr>
+                                <tr class="border-b bg-gray-50">
+                                    <td class="py-3 px-4 font-bold text-secondary">II</td>
+                                    <td class="py-3 px-4 font-bold">Workflow-Design & Training</td>
+                                    <td class="py-3 px-4">2 Wochen</td>
+                                    <td class="py-3 px-4">Entwicklung der Custom Instructions, Training des KI-Modells mit Steelforyou-CI und Normen (EN/ISO).</td>
+                                </tr>
+                                <tr class="border-b">
+                                    <td class="py-3 px-4 font-bold text-secondary">III</td>
+                                    <td class="py-3 px-4 font-bold">Pilotbetrieb (MVP)</td>
+                                    <td class="py-3 px-4">1 Woche</td>
+                                    <td class="py-3 px-4">Erstellung von 2 ECHTEN Pilot-Gutachten, Time-Tracking, Validierung der Output-Qualität (Peer-Review).</td>
+                                </tr>
+                                <tr class="border-b bg-gray-50">
+                                    <td class="py-3 px-4 font-bold text-secondary">IV</td>
+                                    <td class="py-3 px-4 font-bold">Team-Rollout & QA</td>
+                                    <td class="py-3 px-4">1 Woche</td>
+                                    <td class="py-3 px-4">Schulung des gesamten Teams, finale Korrekturen der Prompts, Verfeinerung des Beschriftungs-Stils.</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 font-bold text-secondary">V</td>
+                                    <td class="py-3 px-4 font-bold">Go-Live & Monitoring</td>
+                                    <td class="py-3 px-4">Laufend</td>
+                                    <td class="py-3 px-4">Produktiveinsatz für alle neuen Gutachten. Wöchentliches Monitoring der Effizienzsteigerung (ROI-Messung).</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+            
+            <details class="mt-8" open>
+                <summary class="text-xl">Fördermodule und Digitale Subventionen (Österreich / Steiermark)</summary>
+                <div class="pt-6 space-y-6">
+                    <p class="text-sm italic text-gray-700">Die Implementierung dieses Projekts fällt direkt in den Bereich **Digitalisierung/Prozessoptimierung**, der in Österreich und der Steiermark stark gefördert wird.</p>
+
+                    <!-- Modul 1: SFG X Jobmodul XS -->
+                    <div class="bg-accent-light p-4 rounded-xl border-l-4 border-secondary shadow-inner">
+                        <h4 class="font-bold text-lg text-primary">1. SFG X Jobmodul XS (Top!Job)</h4>
+                        <p class="text-sm mt-1">
+                            **Fokus:** Optimierung der Arbeitsumgebung und Akquise/Bindung von Mitarbeitern durch **Digitalisierung**.
+                            <br>
+                            **Relevanz:** Perfekt für die **interne Schulung (Phase IV)** und die **initiale Prozessanalyse (Phase I & II)**. Die KI-Implementierung macht die Arbeit attraktiver und effizienter (Mitarbeiterbindung).
+                            <br>
+                            **Förderung:** Bis zu **70%** der anrechenbaren Kosten bzw. maximal **3.000 Euro**. Jährlich in Anspruch nehmbar.
+                        </p>
+                    </div>
+
+                    <!-- Modul 2: KMU.DIGITAL -->
+                    <div class="bg-gray-100 p-4 rounded-xl border-l-4 border-primary/50 shadow-inner">
+                        <h4 class="font-bold text-lg text-primary">2. KMU.DIGITAL (Österreich/AWS)</h4>
+                        <p class="text-sm mt-1">
+                            **Fokus:** Investitionen in die Digitalisierung von Geschäftsmodellen und Prozessen.
+                            <br>
+                            **Relevanz:** Kann die **Investitionskosten für Software-Setup (Phase I)** und die **Beratungskosten** für die Entwicklung der spezifischen KI-Workflow-Anweisungen (Custom Instructions) abdecken.
+                            <br>
+                            **Förderung:** Bis zu 50% der förderfähigen Kosten (abhängig vom Modul).
+                        </p>
+                    </div>
+
+                    <!-- Modul 3: Forschungsprämie -->
+                    <div class="bg-accent-light p-4 rounded-xl border-l-4 border-secondary shadow-inner">
+                        <h4 class="font-bold text-lg text-primary">3. Österreichische Forschungsprämie (BMF)</h4>
+                        <p class="text-sm mt-1">
+                            **Fokus:** Eigene Forschungs- und Entwicklungstätigkeiten (F&E).
+                            <br>
+                            **Relevanz:** Die Entwicklung des **"Radiologen-Augen"-KI-Modells** und der komplexen **Gerichtsfeste-Dokumentations-Algorithmen** (KI-Prompts/Logik) kann unter F&E fallen.
+                            <br>
+                            **Förderung:** 14% der gesamten F&E-Kosten werden als Prämie vom Finanzamt ausbezahlt.
+                        </p>
+                    </div>
+                </div>
+            </details>
+
+            <div class="text-center pt-8">
+                <p class="text-xl font-semibold text-primary mb-4">Nächster Schritt:</p>
+                <button class="bg-primary text-white py-3 px-8 rounded-xl shadow-lg text-lg font-bold hover:bg-blue-900 transition" onclick="alert('Nächster Schritt: Detail-Abstimmung und Förderanträge vorbereiten.')">
+                    Detail-Abstimmung & Förderanträge (Phase I)
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // JS für die Navigation zwischen den Tabs
+        let currentTab = 1;
+
+        function showTab(tabIndex) {
+            // Alle Tabs und Inhalte verstecken/inaktiv setzen
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-button').forEach(el => {
+                el.classList.remove('tab-active');
+                el.classList.add('tab-inactive');
+            });
+
+            // Aktuellen Tab anzeigen/aktiv setzen
+            document.getElementById('content' + tabIndex).classList.remove('hidden');
+            document.getElementById('tab' + tabIndex).classList.add('tab-active');
+            document.getElementById('tab' + tabIndex).classList.remove('tab-inactive');
+            currentTab = tabIndex;
+        }
+
+        // Simuliert die Stapelverarbeitung der Beschriftung
+        function simulateBatch(totalPhotos, totalSeconds) {
+            const button = document.querySelector('#content3 button');
+            button.disabled = true;
+            button.textContent = 'Batch-Verarbeitung läuft (45/45)...';
+            button.classList.remove('bg-primary');
+            button.classList.remove('bg-secondary');
+            button.classList.remove('hover-bg-secondary');
+            button.classList.add('bg-yellow-600');
+            
+            setTimeout(() => {
+                button.disabled = false;
+                button.textContent = 'Stapelverarbeitung (45 Fotos) starten';
+                button.classList.add('bg-primary');
+                button.classList.add('hover-bg-secondary');
+                button.classList.remove('bg-yellow-600');
+                
+                alert(`${totalPhotos} Fotos in 10 Minuten (Ziel) beschriftet und exportiert! (Simuliert)`);
+            }, 2500); // Kurze Simulation
+        }
+        
+        // Simuliert die automatischen Korrekturen
+        function simulateCorrection() {
+            const button = document.querySelector('#content4 button');
+            const status = document.getElementById('correction-status');
+            
+            button.disabled = true;
+            button.textContent = 'Korrigiere Dokument... (2/2)';
+            button.classList.remove('bg-secondary');
+            button.classList.remove('hover-bg-secondary');
+            button.classList.add('bg-yellow-600');
+            status.classList.add('hidden');
+            
+            // Markiere alle Fehler als behoben
+            document.querySelectorAll('#checklist li[data-correction]').forEach(li => {
+                li.classList.remove('text-red-600');
+                li.classList.add('text-green-600');
+                li.querySelector('span').innerHTML = '✓';
+            });
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.textContent = '✅ Korrekturen abgeschlossen!';
+                button.classList.remove('bg-yellow-600');
+                button.classList.add('bg-green-600');
+                button.classList.remove('hover-bg-secondary');
+                status.classList.remove('hidden');
+                
+                // Aktualisiere Gesamtbewertung
+                // Dies sucht das span-Element, das den Score anzeigt
+                const scoreElement = document.querySelector('#content4 .font-bold.text-lg.text-primary').nextElementSibling.querySelector('.text-red-600');
+                if (scoreElement) {
+                    scoreElement.classList.remove('text-red-600');
+                    scoreElement.classList.add('text-green-600');
+                    scoreElement.textContent = '✅ GERICHTSFEST (100/100)';
+                }
+                
+            }, 3000); // Kurze Simulation
+        }
+
+        // Ersatz für window.alert/confirm (Custom Modal)
+        function alert(message) {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;';
+            modal.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm text-center transform transition-all scale-100">
+                    <p class="font-bold text-xl text-primary mb-4">KI-Assistent Meldung</p>
+                    <p class="text-gray-700 mb-6">${message}</p>
+                    <button class="bg-primary text-white py-2 px-4 rounded-lg shadow hover:bg-blue-900 transition" onclick="document.body.removeChild(this.closest('div').parentElement)">OK</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Initialisierung
+        window.onload = () => showTab(1); 
+    </script>
+</body>
+</html>
